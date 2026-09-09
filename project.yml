@@ -1,0 +1,55 @@
+name: GrokBotUsage
+options:
+  bundleIdPrefix: com.umichsteve
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: ""
+    ENABLE_HARDENED_RUNTIME: YES
+    PRODUCT_NAME: GrokBotUsage
+targets:
+  GrokBotUsage:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/GrokBotUsage
+        excludes:
+          - Info.plist
+          - Resources/**
+      - path: Sources/GrokBotUsage/Resources
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.umichsteve.GrokBotUsage
+        INFOPLIST_FILE: Sources/GrokBotUsage/Info.plist
+        GENERATE_INFOPLIST_FILE: false
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        COMBINE_HIDPI_IMAGES: YES
+        OTHER_LDFLAGS: "-lsqlite3"
+        SWIFT_EMIT_LOC_STRINGS: YES
+    info:
+      path: Sources/GrokBotUsage/Info.plist
+      properties:
+        CFBundleName: GrokBotUsage
+        CFBundleDisplayName: Grok Bot Usage
+        CFBundleShortVersionString: "1.0.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        LSUIElement: true
+        NSHighResolutionCapable: true
+        NSPrincipalClass: NSApplication
+schemes:
+  GrokBotUsage:
+    build:
+      targets:
+        GrokBotUsage: all
+    run:
+      config: Debug

@@ -1,0 +1,30 @@
+# Xcode / SPM
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj/
+!project.yml
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+# Secrets — never commit session cookies
+.env
+.env.*
+session
+*.session
+**/grokbot-usage/session
+
+# Misc
+*.log
+dist/
