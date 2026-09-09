@@ -141,7 +141,7 @@ enum ChromeCookieReader {
     }
 
     /// Reads the Chromium Safe Storage password from the login keychain via `security`.
-    private static function keychainPassword(service: String, account: String) -> String? {
+    private static func keychainPassword(service: String, account: String) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/security")
         proc.arguments = [
