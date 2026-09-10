@@ -4,7 +4,7 @@ import AppKit
 struct UsagePanelView: View {
     @EnvironmentObject private var store: UsageStore
 
-    private let dashboardURL = URL(string: "https://cursor.com/dashboard?tab=usage")!
+    private let dashboardURL = URL(string: "https://grok.com")!
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -17,7 +17,7 @@ struct UsagePanelView: View {
             controls
         }
         .padding(14)
-        .frame(width: 280)
+        .frame(width: 300)
     }
 
     private var header: some View {
@@ -27,9 +27,9 @@ struct UsagePanelView: View {
                 .foregroundStyle(.tint)
                 .frame(width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Grok Bot")
+                Text("Super Grok")
                     .font(.headline)
-                Text("Weekly included usage")
+                Text("Grok weekly usage")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -55,12 +55,6 @@ struct UsagePanelView: View {
                 .foregroundStyle(.red)
                 .fixedSize(horizontal: false, vertical: true)
 
-        case .noAllowance:
-            Text("This account has no Grok Bot included allowance (`hasNonZeroIncludedLimit` is false).")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-
         default:
             if let status = store.currentStatus {
                 metricRow(title: "Used", value: String(format: "%.0f%%", status.displayUsedPercent))
@@ -68,6 +62,25 @@ struct UsagePanelView: View {
                     .tint(progressTint(status.displayUsedPercent))
                 metricRow(title: "Remaining", value: String(format: "%.0f%%", status.displayRemainingPercent))
                 metricRow(title: "Resets", value: formatReset(status.resetDate))
+
+                if !status.productUsage.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("By product")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 4)
+                        ForEach(status.productUsage) { item in
+                            HStack {
+                                Text(item.displayName)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(String(format: "%.0f%%", item.displayPercent))
+                                    .monospacedDigit()
+                            }
+                            .font(.caption)
+                        }
+                    }
+                }
             } else {
                 Text("No data yet.")
                     .foregroundStyle(.secondary)
@@ -112,13 +125,14 @@ struct UsagePanelView: View {
                 Spacer()
 
                 Link(destination: dashboardURL) {
-                    Label("Dashboard", systemImage: "safari")
+                    Label("grok.com", systemImage: "safari")
                 }
+                .help("Open grok.com → Settings → Usage")
             }
             .buttonStyle(.bordered)
             .controlSize(.small)
 
-            Button("Quit Grok Bot Usage") {
+            Button("Quit Super Grok Usage") {
                 NSApplication.shared.terminate(nil)
             }
             .buttonStyle(.plain)
