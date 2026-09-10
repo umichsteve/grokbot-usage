@@ -27,10 +27,10 @@ struct MenuBarLabelView: View {
     }
 
     private var helpText: String {
-        if store.demoMode { return "Grok Bot usage (Demo Mode)" }
+        if store.demoMode { return "Super Grok weekly usage (Demo Mode)" }
         if let s = store.currentStatus {
-            return "Grok Bot weekly usage: \(Int(s.displayUsedPercent.rounded()))% used"
+            return "Super Grok weekly usage: \(Int(s.displayUsedPercent.rounded()))% used"
         }
-        return "Grok Bot Usage"
+        return "Grok weekly usage"
     }
 }

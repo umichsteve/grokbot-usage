@@ -33,15 +33,14 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
-        OTHER_LDFLAGS: "-lsqlite3"
         SWIFT_EMIT_LOC_STRINGS: YES
     info:
       path: Sources/GrokBotUsage/Info.plist
       properties:
         CFBundleName: GrokBotUsage
-        CFBundleDisplayName: Grok Bot Usage
-        CFBundleShortVersionString: "1.0.0"
-        CFBundleVersion: "1"
+        CFBundleDisplayName: Super Grok Usage
+        CFBundleShortVersionString: "1.1.0"
+        CFBundleVersion: "2"
         LSMinimumSystemVersion: "14.0"
         LSUIElement: true
         NSHighResolutionCapable: true

@@ -77,7 +77,7 @@ grok login
 Typical fields per session entry:
 
 | Field | Meaning |
-|-------|---------|---|---|---|
+|-------|---------|
 | `key` or `access_token` | Bearer access token |
 | `refresh_token` | OIDC refresh token |
 | `expires_at` | Access token expiry (ISO-8601) |

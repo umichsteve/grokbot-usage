@@ -21,7 +21,6 @@ struct GrokBotUsageApp: App {
     }
 
     init() {
-        // Kick off first refresh ASAP once AppKit is up.
         Task { @MainActor in
             UsageStore.shared.start()
         }

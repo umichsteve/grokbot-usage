@@ -1,11 +1,10 @@
-# Copy to ~/.config/grokbot-usage/session and replace with your real token.
-# Get WorkosCursorSessionToken from a signed-in browser:
-#   DevTools → Application → Cookies → https://cursor.com → WorkosCursorSessionToken
+# ADVANCED fallback only — prefer `grok login` → ~/.grok/auth.json.
+# Copy to ~/.config/grokbot-usage/session and replace with a Bearer access token.
 # NEVER commit the real file. NEVER paste the token into chat.
 #
 # Either form works:
 
-WorkosCursorSessionToken=user_XXXX%3A%3AeyJhbGciOi...
+Bearer eyJhbGciOi...
 
 # — or bare token value —
-# user_XXXX::eyJhbGciOi...
+# eyJhbGciOi...
