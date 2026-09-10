@@ -2,6 +2,7 @@ import Foundation
 
 enum UsageAPIError: LocalizedError {
     case badURL
+    case unauthorized
     case httpStatus(Int, String)
     case decoding(Error)
     case transport(Error)
@@ -10,11 +11,13 @@ enum UsageAPIError: LocalizedError {
         switch self {
         case .badURL:
             return "Invalid API URL"
+        case .unauthorized:
+            return "Not authenticated (HTTP 401/403). Run `grok login` or refresh your token."
         case .httpStatus(let code, let body):
-            if code == 401 || code == 403 {
-                return "Not authenticated (HTTP \(code)). Refresh your Cursor session cookie."
-            }
             let snippet = body.prefix(180).replacingOccurrences(of: "\n", with: " ")
+            if code == 412 {
+                return "Billing unavailable for this account (HTTP 412). Personal Super Grok weekly usage may not apply to team logins."
+            }
             return "HTTP \(code): \(snippet)"
         case .decoding(let err):
             return "Could not parse usage response: \(err.localizedDescription)"
@@ -25,27 +28,26 @@ enum UsageAPIError: LocalizedError {
 }
 
 struct UsageAPIClient: Sendable {
-    var baseURL: URL = URL(string: "https://cursor.com")!
+    /// Primary weekly pool endpoint used by Grok CLI / GrokUsageBar / OpenUsage.
+    var creditsURL: URL = URL(string: "https://cli-chat-proxy.grok.com/v1/billing?format=credits")!
     var session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForRequest = 20
         config.httpCookieStorage = nil
         config.httpShouldSetCookies = false
         return URLSession(configuration: config)
     }()
 
-    func fetchSandUsage(cookieHeader: String) async throws -> SandUsageStatus {
-        guard let url = URL(string: "/api/dashboard/get-sand-usage-status", relativeTo: baseURL)?.absoluteURL else {
-            throw UsageAPIError.badURL
-        }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("https://cursor.com", forHTTPHeaderField: "Origin")
-        request.setValue("https://cursor.com", forHTTPHeaderField: "Referer")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    func fetchWeeklyUsage(bearerToken: String) async throws -> SuperGrokUsage {
+        var request = URLRequest(url: creditsURL)
+        request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        request.setValue(cookieHeader, forHTTPHeaderField: "Cookie")
-        request.httpBody = Data("{}".utf8)
+        request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+        // Best-effort headers commonly used by Grok CLI / public meters.
+        request.setValue("xai-grok-cli", forHTTPHeaderField: "X-XAI-Token-Auth")
+        request.setValue("menu-bar", forHTTPHeaderField: "x-grok-client-surface")
+        request.setValue("GrokBotUsage/1.0", forHTTPHeaderField: "x-grok-client-version")
+        request.setValue("GrokBotUsage/1.0", forHTTPHeaderField: "User-Agent")
 
         let data: Data
         let response: URLResponse
@@ -58,13 +60,18 @@ struct UsageAPIClient: Sendable {
         guard let http = response as? HTTPURLResponse else {
             throw UsageAPIError.httpStatus(-1, "Non-HTTP response")
         }
+        if http.statusCode == 401 || http.statusCode == 403 {
+            throw UsageAPIError.unauthorized
+        }
         guard (200..<300).contains(http.statusCode) else {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw UsageAPIError.httpStatus(http.statusCode, body)
         }
 
         do {
-            return try JSONDecoder().decode(SandUsageStatus.self, from: data)
+            return try SuperGrokUsage.decode(from: data)
+        } catch let err as UsageAPIError {
+            throw err
         } catch {
             throw UsageAPIError.decoding(error)
         }
