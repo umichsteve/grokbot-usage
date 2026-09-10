@@ -17,6 +17,8 @@ struct MenuBarLabelView: View {
 
     private var tint: Color {
         guard let pct = store.currentStatus?.displayUsedPercent else {
+            // Unknown percent (period-only API) or no data yet.
+            if store.currentStatus != nil { return .secondary }
             return store.demoMode ? .green : .secondary
         }
         switch pct {
@@ -29,7 +31,10 @@ struct MenuBarLabelView: View {
     private var helpText: String {
         if store.demoMode { return "Super Grok weekly usage (Demo Mode)" }
         if let s = store.currentStatus {
-            return "Super Grok weekly usage: \(Int(s.displayUsedPercent.rounded()))% used"
+            if let pct = s.displayUsedPercent {
+                return "Super Grok weekly usage: \(Int(pct.rounded()))% used"
+            }
+            return "Super Grok weekly usage: % not reported by CLI billing yet"
         }
         return "Grok weekly usage"
     }

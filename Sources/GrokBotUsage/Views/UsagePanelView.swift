@@ -27,7 +27,7 @@ struct UsagePanelView: View {
                 .foregroundStyle(.tint)
                 .frame(width: 32, height: 32)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Super Grok")
+                Text(headerTitle)
                     .font(.headline)
                 Text("Grok weekly usage")
                     .font(.caption)
@@ -35,6 +35,13 @@ struct UsagePanelView: View {
             }
             Spacer(minLength: 0)
         }
+    }
+
+    private var headerTitle: String {
+        if let tier = store.currentStatus?.subscriptionTierDisplay, !tier.isEmpty {
+            return tier
+        }
+        return "Super Grok"
     }
 
     @ViewBuilder
@@ -57,11 +64,30 @@ struct UsagePanelView: View {
 
         default:
             if let status = store.currentStatus {
-                metricRow(title: "Used", value: String(format: "%.0f%%", status.displayUsedPercent))
-                ProgressView(value: status.displayUsedPercent, total: 100)
-                    .tint(progressTint(status.displayUsedPercent))
-                metricRow(title: "Remaining", value: String(format: "%.0f%%", status.displayRemainingPercent))
+                if let used = status.displayUsedPercent {
+                    metricRow(title: "Used", value: String(format: "%.0f%%", used))
+                    ProgressView(value: used, total: 100)
+                        .tint(progressTint(used))
+                    if let remaining = status.displayRemainingPercent {
+                        metricRow(title: "Remaining", value: String(format: "%.0f%%", remaining))
+                    }
+                } else {
+                    metricRow(title: "Used", value: "—")
+                    Text("Weekly % not reported by Grok CLI billing yet")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("Period is known; percent omitted (not the same as 0%). Check grok.com → Settings → Usage, or wait until xAI includes creditUsagePercent.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 metricRow(title: "Resets", value: formatReset(status.resetDate))
+
+                if let tier = status.subscriptionTierDisplay, !tier.isEmpty {
+                    metricRow(title: "Plan", value: tier)
+                }
 
                 if !status.productUsage.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
