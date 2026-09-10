@@ -2,9 +2,8 @@
   "config": {
     "currentPeriod": {
       "type": "USAGE_PERIOD_TYPE_WEEKLY",
-      "start": "2026-09-10T07:19:44.904462+00:00",
-      "end": "2026-09-17T07:19:44.904462+00:00"
-    },
-    "isUnifiedBillingUser": true
+      "start": "2026-09-09T12:00:00.000Z",
+      "end": "2026-09-16T12:00:00.000Z"
+    }
   }
 }

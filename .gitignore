@@ -18,12 +18,14 @@ xcuserdata/
 *.perspectivev3
 !default.perspectivev3
 
-# Secrets — never commit session cookies / tokens
+# Secrets — never commit tokens / auth
 .env
 .env.*
 session
 *.session
 **/grokbot-usage/session
+auth.json
+**/auth.json
 
 # Misc
 *.log

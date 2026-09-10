@@ -2,8 +2,8 @@
 
 A free, open-source **macOS 14+ menu bar app** that shows your **Super Grok (xAI / grok.com) weekly usage %** — the same shared weekly pool as Settings → Usage on [grok.com](https://grok.com).
 
-Menu bar label: triangle icon + used percent of the Super Grok weekly pool (`creditUsagePercent`).  
-Dropdown panel: used %, remaining %, reset time (`currentPeriod.end`), last refresh, Refresh, Demo Mode, Quit, optional product breakdown (Chat / Build / Imagine / …), and a link to [grok.com](https://grok.com) (Settings → Usage).
+Menu bar label: triangle icon + used percent of the Super Grok weekly pool (`creditUsagePercent`), or **—** when the CLI billing payload omits the percent.  
+Dropdown panel: used %, remaining %, reset time (`currentPeriod.end`), optional plan tier from `/v1/settings`, last refresh, Refresh, Demo Mode, Quit, optional product breakdown (Chat / Build / Imagine / …), and a link to [grok.com](https://grok.com) (Settings → Usage).
 
 MIT licensed. Repo: [umichsteve/grokbot-usage](https://github.com/umichsteve/grokbot-usage).
 
@@ -116,15 +116,33 @@ Parsed flexibly from `config`:
 
 | Field | Meaning |
 |-------|---------|
-| `creditUsagePercent` | Weekly Super Grok used % (0–100, or 0–1 fraction) |
+| `creditUsagePercent` | Weekly Super Grok used % (0–100, or 0–1 fraction). **Only when present.** |
 | `currentPeriod.type` | e.g. `USAGE_PERIOD_TYPE_WEEKLY` |
 | `currentPeriod.start` / `end` | Period window; **reset time** = `end` |
 | `productUsage[].product` | e.g. `GrokChat`, `GrokBuild`, `GrokImagine` |
 | `productUsage[].usagePercent` | Per-product share of the weekly pool |
 
-If `creditUsagePercent` is **omitted** but a valid weekly `currentPeriod` is present, the app treats usage as **0%** (fresh reset) and does not fail.
+Optional companion call (best-effort; failure does not fail the refresh):
 
-Example:
+```http
+GET https://cli-chat-proxy.grok.com/v1/settings
+```
+
+Used for `subscription_tier_display` (e.g. `SuperGrok`) in the panel header / Plan row.
+
+### Period-only payloads (no percent)
+
+Some SuperGrok accounts get HTTP 200 with a weekly `currentPeriod` but **omit** `creditUsagePercent` and `productUsage` entirely (known xAI / unified-billing drift). grok.com’s web UI may still show a real percent (~19% etc.).
+
+This app follows CodexBar / OpenUsage guidance:
+
+- **Omitted percent + period = unknown usage** — menu bar shows **—**, panel says *Weekly % not reported by Grok CLI billing yet*, and still shows reset time / plan when available.
+- **Never invent 0%** from an omitted field. `0%` only appears when the API sends an explicit `creditUsagePercent: 0`.
+- A grok.com web scrape / gRPC cookie path is **not** implemented; prefer honest unavailable over fake zeros until xAI includes the field or a real web fallback is added later.
+
+Fixture: `Fixtures/billing-credits.period-only.sample.json`.
+
+Example (full credits shape):
 
 ```json
 {
@@ -153,6 +171,7 @@ LICENSE                       # MIT
 README.md
 session.example               # Advanced Bearer token fallback template
 Fixtures/billing-credits.sample.json
+Fixtures/billing-credits.period-only.sample.json
 Sources/GrokBotUsage/
   GrokBotUsageApp.swift       # MenuBarExtra entry
   Info.plist                  # LSUIElement = true
@@ -161,7 +180,7 @@ Sources/GrokBotUsage/
     UsageStore.swift
   Services/
     AuthResolver.swift        # ~/.grok/auth.json + OIDC refresh + fallbacks
-    UsageAPIClient.swift      # cli-chat-proxy billing?format=credits
+    UsageAPIClient.swift      # billing?format=credits + optional /v1/settings
   Views/
     MenuBarLabelView.swift
     UsagePanelView.swift
@@ -171,7 +190,7 @@ Sources/GrokBotUsage/
 ## Privacy
 
 - Tokens stay on your Mac (`~/.grok/auth.json`, optional env / local session file).
-- The only network calls (when Demo Mode is off) are to xAI hosts: OIDC token refresh and `cli-chat-proxy.grok.com` billing.
+- The only network calls (when Demo Mode is off) are to xAI hosts: OIDC token refresh, `cli-chat-proxy.grok.com` billing, and best-effort `/v1/settings`.
 - No analytics, no third-party trackers.
 
 ## License
@@ -180,4 +199,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## Credits
 
-Auth + billing shapes aligned with public meters such as [GrokUsageBar](https://github.com/SergioComeron/GrokUsageBar) and [OpenUsage](https://github.com/robinebers/openusage) (Grok CLI `~/.grok/auth.json`, `creditUsagePercent`).
+Auth + billing shapes aligned with public meters such as [GrokUsageBar](https://github.com/SergioComeron/GrokUsageBar) and [OpenUsage](https://github.com/robinebers/openusage) (Grok CLI `~/.grok/auth.json`, `creditUsagePercent`). Omitted-percent handling follows CodexBar / OpenUsage: unknown, not fabricated 0%.

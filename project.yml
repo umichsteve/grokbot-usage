@@ -39,8 +39,8 @@ targets:
       properties:
         CFBundleName: GrokBotUsage
         CFBundleDisplayName: Super Grok Usage
-        CFBundleShortVersionString: "1.1.0"
-        CFBundleVersion: "2"
+        CFBundleShortVersionString: "1.1.1"
+        CFBundleVersion: "3"
         LSMinimumSystemVersion: "14.0"
         LSUIElement: true
         NSHighResolutionCapable: true
