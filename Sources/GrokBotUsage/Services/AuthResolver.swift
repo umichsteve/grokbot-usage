@@ -234,8 +234,8 @@ struct AuthResolver: Sendable {
         var components = URLComponents()
         components.queryItems = [
             URLQueryItem(name: "grant_type", value: "refresh_token"),
-            URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "refresh_token", value: refreshToken),
+            URLQueryItem(name: "client_id", value: clientId),
         ]
         request.httpBody = components.percentEncodedQuery?.data(using: .utf8)
 
