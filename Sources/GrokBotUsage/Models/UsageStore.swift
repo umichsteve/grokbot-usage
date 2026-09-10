@@ -3,17 +3,16 @@ import Combine
 
 enum AuthSource: String, Equatable, Sendable {
     case demo = "Demo Mode"
+    case grokAuthFile = "Grok CLI (~/.grok/auth.json)"
     case environment = "Environment variable"
     case configFile = "Config file"
-    case chromeCookies = "Browser cookies"
     case none = "Not signed in"
 }
 
 enum UsageLoadState: Equatable, Sendable {
     case idle
     case loading
-    case loaded(SandUsageStatus)
-    case noAllowance(SandUsageStatus)
+    case loaded(SuperGrokUsage)
     case error(String)
 }
 
@@ -51,7 +50,7 @@ final class UsageStore: ObservableObject {
 
     var usedPercentText: String {
         switch state {
-        case .loaded(let s), .noAllowance(let s):
+        case .loaded(let s):
             return String(format: "%.0f%%", s.displayUsedPercent)
         case .loading:
             return lastSnapshot.map { String(format: "%.0f%%", $0.displayUsedPercent) } ?? "…"
@@ -60,16 +59,16 @@ final class UsageStore: ObservableObject {
         }
     }
 
-    var currentStatus: SandUsageStatus? {
+    var currentStatus: SuperGrokUsage? {
         switch state {
-        case .loaded(let s), .noAllowance(let s):
+        case .loaded(let s):
             return s
         default:
             return lastSnapshot
         }
     }
 
-    private var lastSnapshot: SandUsageStatus?
+    private var lastSnapshot: SuperGrokUsage?
 
     func start() {
         Task { await refresh() }
@@ -92,16 +91,20 @@ final class UsageStore: ObservableObject {
         state = .loading
 
         if demoMode {
-            let demo = SandUsageStatus(
-                currentPeriodStart: ISO8601DateFormatter().string(
+            let demo = SuperGrokUsage(
+                creditUsagePercent: 33,
+                periodType: "USAGE_PERIOD_TYPE_WEEKLY",
+                periodStart: ISO8601DateFormatter().string(
                     from: Date().addingTimeInterval(-3 * 24 * 3600)
                 ),
-                nextResetTimestampUtc: ISO8601DateFormatter().string(
+                periodEnd: ISO8601DateFormatter().string(
                     from: Date().addingTimeInterval(4 * 24 * 3600)
                 ),
-                usagePercent: 33,
-                hasAvailableUsage: true,
-                hasNonZeroIncludedLimit: true
+                productUsage: [
+                    ProductUsageShare(product: "GrokChat", usagePercent: 18),
+                    ProductUsageShare(product: "GrokBuild", usagePercent: 12),
+                    ProductUsageShare(product: "GrokImagine", usagePercent: 3),
+                ]
             )
             lastSnapshot = demo
             authSource = .demo
@@ -111,28 +114,32 @@ final class UsageStore: ObservableObject {
             return
         }
 
-        let resolved = auth.resolve()
-        authSource = resolved.source
-        authDetail = resolved.detail
-
-        guard let cookie = resolved.cookie, !cookie.isEmpty else {
-            state = .error(
-                "No Cursor session found. Sign in at cursor.com, or paste WorkosCursorSessionToken into ~/.config/grokbot-usage/session (or set GROKBOT_USAGE_COOKIE). Toggle Demo Mode to preview the UI."
-            )
-            return
-        }
-
         do {
-            let status = try await client.fetchSandUsage(cookieHeader: cookie)
-            lastSnapshot = status
-            lastRefresh = Date()
-            if status.hasIncludedAllowance == false {
-                state = .noAllowance(status)
-            } else if status.usagePercent == nil {
-                state = .error("Response missing usagePercent")
-            } else {
+            var resolved = try await auth.resolve()
+            authSource = resolved.source
+            authDetail = resolved.detail
+
+            do {
+                let status = try await client.fetchWeeklyUsage(bearerToken: resolved.token)
+                lastSnapshot = status
+                lastRefresh = Date()
+                state = .loaded(status)
+            } catch UsageAPIError.unauthorized where resolved.canRefresh {
+                // Access token rejected — OIDC refresh once, then retry.
+                resolved = try await auth.refreshIfPossible()
+                authSource = resolved.source
+                authDetail = resolved.detail
+                let status = try await client.fetchWeeklyUsage(bearerToken: resolved.token)
+                lastSnapshot = status
+                lastRefresh = Date()
                 state = .loaded(status)
             }
+        } catch let err as GrokAuthError {
+            authSource = .none
+            authDetail = err.localizedDescription
+            state = .error(
+                "\(err.localizedDescription) Install the Grok CLI, run `grok login`, turn off Demo Mode, then Refresh. Advanced: set SUPERGROK_USAGE_TOKEN or ~/.config/grokbot-usage/session."
+            )
         } catch {
             state = .error(error.localizedDescription)
         }
