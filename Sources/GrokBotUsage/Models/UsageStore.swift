@@ -48,15 +48,26 @@ final class UsageStore: ObservableObject {
         }
     }
 
+    /// Menu-bar label: known percent, or `—` when loaded but API omitted the field.
     var usedPercentText: String {
         switch state {
         case .loaded(let s):
-            return String(format: "%.0f%%", s.displayUsedPercent)
+            return Self.formatPercentLabel(s)
         case .loading:
-            return lastSnapshot.map { String(format: "%.0f%%", $0.displayUsedPercent) } ?? "…"
+            if let snap = lastSnapshot {
+                return Self.formatPercentLabel(snap)
+            }
+            return "…"
         case .error, .idle:
             return demoMode ? "33%" : "—"
         }
+    }
+
+    private static func formatPercentLabel(_ usage: SuperGrokUsage) -> String {
+        if let pct = usage.displayUsedPercent {
+            return String(format: "%.0f%%", pct)
+        }
+        return "—"
     }
 
     var currentStatus: SuperGrokUsage? {
@@ -104,7 +115,8 @@ final class UsageStore: ObservableObject {
                     ProductUsageShare(product: "GrokChat", usagePercent: 18),
                     ProductUsageShare(product: "GrokBuild", usagePercent: 12),
                     ProductUsageShare(product: "GrokImagine", usagePercent: 3),
-                ]
+                ],
+                subscriptionTierDisplay: "SuperGrok"
             )
             lastSnapshot = demo
             authSource = .demo

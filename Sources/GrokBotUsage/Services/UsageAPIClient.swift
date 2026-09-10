@@ -30,6 +30,8 @@ enum UsageAPIError: LocalizedError {
 struct UsageAPIClient: Sendable {
     /// Primary weekly pool endpoint used by Grok CLI / GrokUsageBar / OpenUsage.
     var creditsURL: URL = URL(string: "https://cli-chat-proxy.grok.com/v1/billing?format=credits")!
+    /// Optional plan/tier display (e.g. SuperGrok) — best-effort, non-fatal if missing.
+    var settingsURL: URL = URL(string: "https://cli-chat-proxy.grok.com/v1/settings")!
     var session: URLSession = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 20
@@ -39,7 +41,50 @@ struct UsageAPIClient: Sendable {
     }()
 
     func fetchWeeklyUsage(bearerToken: String) async throws -> SuperGrokUsage {
-        var request = URLRequest(url: creditsURL)
+        var usage = try await fetchCredits(bearerToken: bearerToken)
+        if let tier = try? await fetchSubscriptionTierDisplay(bearerToken: bearerToken) {
+            usage.subscriptionTierDisplay = tier
+        }
+        return usage
+    }
+
+    private func fetchCredits(bearerToken: String) async throws -> SuperGrokUsage {
+        let data = try await authorizedGET(creditsURL, bearerToken: bearerToken)
+        do {
+            return try SuperGrokUsage.decode(from: data)
+        } catch let err as UsageAPIError {
+            throw err
+        } catch {
+            throw UsageAPIError.decoding(error)
+        }
+    }
+
+    /// Best-effort: `subscription_tier_display` from `/v1/settings` (e.g. "SuperGrok").
+    func fetchSubscriptionTierDisplay(bearerToken: String) async throws -> String? {
+        let data = try await authorizedGET(settingsURL, bearerToken: bearerToken)
+        guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        // Nested or flat shapes seen across CLI proxies.
+        let candidates: [Any?] = [
+            root["subscription_tier_display"],
+            root["subscriptionTierDisplay"],
+            (root["settings"] as? [String: Any])?["subscription_tier_display"],
+            (root["settings"] as? [String: Any])?["subscriptionTierDisplay"],
+            (root["user"] as? [String: Any])?["subscription_tier_display"],
+            (root["account"] as? [String: Any])?["subscription_tier_display"],
+        ]
+        for value in candidates {
+            if let s = value as? String {
+                let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !trimmed.isEmpty { return trimmed }
+            }
+        }
+        return nil
+    }
+
+    private func authorizedGET(_ url: URL, bearerToken: String) async throws -> Data {
+        var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
@@ -67,13 +112,6 @@ struct UsageAPIClient: Sendable {
             let body = String(data: data, encoding: .utf8) ?? ""
             throw UsageAPIError.httpStatus(http.statusCode, body)
         }
-
-        do {
-            return try SuperGrokUsage.decode(from: data)
-        } catch let err as UsageAPIError {
-            throw err
-        } catch {
-            throw UsageAPIError.decoding(error)
-        }
+        return data
     }
 }
